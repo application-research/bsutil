@@ -18,7 +18,9 @@ func main() {
 	app := cli.NewApp()
 	app.Commands = []*cli.Command{
 		{
-			Name: "merge",
+			Name:        "merge",
+			Description: "Merge two or more flatfs blockstores into one",
+			Usage:       "bsutil merge -i /blockstore-a -i /blockstore-b -i /blockstore-c -o /optional-output-path",
 			Flags: []cli.Flag{
 				&cli.StringSliceFlag{
 					Name:    "input",
