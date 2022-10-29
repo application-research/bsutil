@@ -17,6 +17,20 @@ import (
 func main() {
 	app := cli.NewApp()
 	app.Commands = []*cli.Command{
+
+		{
+			Name:  "peek",
+			Usage: "Peek at the contents of a blockstore",
+			Flags: []cli.Flag{
+				&cli.StringSliceFlag{
+					Name:     "input",
+					Usage:    "Path to the input blockstore",
+					Required: true,
+					Aliases:  []string{"i"},
+				},
+			},
+			Action: cmdPeek,
+		},
 		{
 			Name:        "merge",
 			Description: "Merge two or more flatfs blockstores into one",
@@ -39,6 +53,37 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		fmt.Printf("%v\n", err)
 	}
+}
+
+func cmdPeek(ctx *cli.Context) error {
+	if len(ctx.StringSlice("input")) == 0 {
+		return fmt.Errorf("at least one input is required")
+	}
+
+	for i, inputPath := range ctx.StringSlice("input") {
+		inputDS, err := flatfs.Open(inputPath, false)
+		if err != nil {
+			return err
+		}
+
+		input := blockstore.NewBlockstoreNoPrefix(inputDS)
+
+		fmt.Printf("Peeking at %s... (%d/%d)\n", inputPath, i+1, len(ctx.StringSlice("input")))
+		allLMDBKeys, err := input.AllKeysChan(ctx.Context)
+		if err != nil {
+			return fmt.Errorf("could not get all lmdb keys channel: %v", err)
+		}
+		for key := range allLMDBKeys {
+			fmt.Println(key) // just want to look at it.
+		}
+
+		// Close the input datastore - no sync required since it's only being read from
+		if err := inputDS.Close(); err != nil {
+			fmt.Printf("Failed to close input blockstore %d\n", i)
+		}
+	}
+
+	return nil
 }
 
 func cmdMerge(ctx *cli.Context) error {
