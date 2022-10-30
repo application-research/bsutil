@@ -63,11 +63,13 @@ func cmdPeekLmdb(ctx *cli.Context) error {
 	sync := lmdb.Options{NoSync: false, Path: ctx.String("input")}
 
 	bs, _ := lmdb.Open(&sync)
-	stat, _ := bs.Stat()
-	fmt.Println(stat.Entries)
-	fmt.Println(stat.BranchPages)
-	bs.AllKeysChan(context.Background())
-
+	ch1, err := bs.AllKeysChan(context.Background())
+	if err != nil {
+		return err
+	}
+	for c := range ch1 {
+		fmt.Println(c)
+	}
 	return nil
 }
 
