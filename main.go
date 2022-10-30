@@ -3,15 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
-
 	"github.com/cheggaaa/pb/v3"
+	lmdb "github.com/filecoin-project/go-bs-lmdb"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-datastore"
 	flatfs "github.com/ipfs/go-ds-flatfs"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/urfave/cli/v2"
+	"os"
+	"path/filepath"
 )
 
 func main() {
@@ -19,17 +19,17 @@ func main() {
 	app.Commands = []*cli.Command{
 
 		{
-			Name:  "peek",
-			Usage: "Peek at the contents of a blockstore",
+			Name:  "lmbd-peek",
+			Usage: "Peek at the contents of an lmdb blockstore",
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "input",
-					Usage:    "Path to the input blockstore",
+					Usage:    "Path to the input blockstore path",
 					Required: true,
 					Aliases:  []string{"i"},
 				},
 			},
-			Action: cmdPeek,
+			Action: cmdPeekLmdb,
 		},
 		{
 			Name:        "merge",
@@ -55,36 +55,18 @@ func main() {
 	}
 }
 
-func cmdPeek(ctx *cli.Context) error {
+func cmdPeekLmdb(ctx *cli.Context) error {
+
 	if len(ctx.String("input")) == 0 {
 		return fmt.Errorf("at least one input is required")
 	}
+	sync := lmdb.Options{NoSync: false, Path: ctx.String("input")}
 
-	//for i, inputPath := range ctx.StringSlice("input") {
-	inputPath := ctx.String("input")
-	fmt.Println(inputPath)
-	fmt.Println("----->>>>>> GET THAT BS", inputPath)
-	inputDS, err := flatfs.Open(inputPath, false)
-	if err != nil {
-		return err
-	}
-
-	input := blockstore.NewBlockstore(inputDS)
-
-	fmt.Printf("Peeking at %s", inputPath)
-	allLMDBKeys, err := input.AllKeysChan(ctx.Context)
-	if err != nil {
-		return fmt.Errorf("could not get all lmdb keys channel: %v", err)
-	}
-	for key := range allLMDBKeys {
-		fmt.Println(key) // just want to look at it.
-	}
-
-	// Close the input datastore - no sync required since it's only being read from
-	if err := inputDS.Close(); err != nil {
-		fmt.Printf("Failed to close input blockstore %d\n", i)
-	}
-	//}
+	bs, _ := lmdb.Open(&sync)
+	stat, _ := bs.Stat()
+	fmt.Println(stat.Entries)
+	fmt.Println(stat.BranchPages)
+	bs.AllKeysChan(context.Background())
 
 	return nil
 }
